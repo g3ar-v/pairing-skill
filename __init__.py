@@ -18,12 +18,12 @@ from requests import HTTPError
 from threading import Timer, Lock
 from uuid import uuid4
 
-import mycroft.audio
-from mycroft.api import DeviceApi, is_paired, check_remote_pairing
-from mycroft.identity import IdentityManager
-from mycroft.messagebus.message import Message
-from mycroft.skills import intent_handler, MycroftSkill
-from mycroft.skills.intent_service import AdaptIntent
+import core.audio
+from core.api import DeviceApi, is_paired, check_remote_pairing
+from core.identity import IdentityManager
+from core.messagebus.message import Message
+from core.skills import intent_handler, MycroftSkill
+from core.skills.intent_service import AdaptIntent
 
 
 MARK_II = 'mycroft_mark_2'
@@ -34,8 +34,8 @@ ACTIVATION_POLL_FREQUENCY = 10  # secs between checking server for activation
 
 def _stop_speaking():
     """Stop speaking the pairing code if it is still being spoken."""
-    if mycroft.audio.is_speaking():
-        mycroft.audio.stop_speaking()
+    if core.audio.is_speaking():
+        core.audio.stop_speaking()
 
 
 class PairingSkill(MycroftSkill):
