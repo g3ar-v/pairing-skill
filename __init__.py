@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Mycroft skill to pair a device to the Selene backend."""
+"""skill to pair a device to the Selene backend."""
 import time
 from requests import HTTPError
 from threading import Timer, Lock
@@ -22,7 +22,7 @@ import core.audio
 from core.api import DeviceApi, is_paired, check_remote_pairing
 from core.identity import IdentityManager
 from core.messagebus.message import Message
-from core.skills import intent_handler, MycroftSkill
+from core.skills import intent_handler, Skill
 from core.skills.intent_service import AdaptIntent
 
 
@@ -38,7 +38,7 @@ def _stop_speaking():
         core.audio.stop_speaking()
 
 
-class PairingSkill(MycroftSkill):
+class PairingSkill(Skill):
     """Device pairing logic."""
     def __init__(self):
         super().__init__("PairingSkill")
@@ -71,7 +71,7 @@ class PairingSkill(MycroftSkill):
 
     def initialize(self):
         """Register event handlers, setup language and platform dependent info."""
-        self.add_event("mycroft.not.paired", self.not_paired)
+        self.add_event("core.not.paired", self.not_paired)
         self.nato_alphabet = self.translate_namedvalues('codes')
         # TODO replace self.platform logic with call to enclosure capabilities
         self.platform = self.config_core['enclosure'].get(
@@ -84,7 +84,7 @@ class PairingSkill(MycroftSkill):
         # This assumes that the pairing skill is loaded as a priority skill
         # before the rest of the skills are loaded.
         if not is_paired():
-            self.add_event("mycroft.ready", self.handle_mycroft_ready)
+            self.add_event("core.ready", self.handle_mycroft_ready)
 
     def _select_paired_dialog(self):
         """Select the correct dialog file to communicate pairing complete."""
@@ -148,12 +148,8 @@ class PairingSkill(MycroftSkill):
         if not self.account_creation_requested:
             self.log.info("Communicating account URL to user")
             self.account_creation_requested = True
-            if self.gui.connected:
-                self._show_page("create_account")
-            else:
-                self.enclosure.mouth_text("account.mycroft.ai      ")
             self.speak_dialog("create.account")
-            mycroft.audio.wait_while_speaking()
+            core.audio.wait_while_speaking()
             time.sleep(30)
 
     def _execute_pairing_sequence(self):
@@ -162,7 +158,7 @@ class PairingSkill(MycroftSkill):
         self._get_pairing_data()
         if self.pairing_code is not None:
             self._communicate_pairing_url()
-            self._display_pairing_code()
+            # self._display_pairing_code()
             self._speak_pairing_code()
             self._attempt_activation()
 
@@ -203,20 +199,20 @@ class PairingSkill(MycroftSkill):
     def _communicate_pairing_url(self):
         """Tell the user the URL for pairing and display it, if possible"""
         self.log.info("Communicating pairing URL to user")
-        if self.gui.connected:
-            self._show_page("pairing_start")
-        else:
-            self.enclosure.mouth_text("mycroft.ai/pair      ")
+        # if self.gui.connected:
+        #     self._show_page("pairing_start")
+        # else:
+        #     self.enclosure.mouth_text("mycroft.ai/pair      ")
         self.speak_dialog("pairing.intro")
         time.sleep(30)
 
-    def _display_pairing_code(self):
-        """Show the pairing code on the display, if one is available"""
-        if self.gui.connected:
-            self.gui['pairingCode'] = self.pairing_code
-            self._show_page("pairing_code")
-        else:
-            self.enclosure.mouth_text(self.pairing_code)
+    # def _display_pairing_code(self):
+    #     """Show the pairing code on the display, if one is available"""
+    #     if self.gui.connected:
+    #         self.gui['pairingCode'] = self.pairing_code
+    #         self._show_page("pairing_code")
+    #     else:
+    #         self.enclosure.mouth_text(self.pairing_code)
 
     def _attempt_activation(self):
         """Speak the pairing code if two """
@@ -290,14 +286,14 @@ class PairingSkill(MycroftSkill):
         """
         self._save_identity(login)
         _stop_speaking()
-        self._display_pairing_success()
-        self.bus.emit(Message("mycroft.paired", login))
+        # self._display_pairing_success()
+        self.bus.emit(Message("core.paired", login))
         self.pairing_performed = True
         self._speak_pairing_success()
-        self.gui.release()
+        # self.gui.release()
         self.bus.emit(Message("configuration.updated"))
         # Without this the idle screen does not show up after pairing.
-        self.bus.emit(Message("mycroft.device.show.idle"))
+        self.bus.emit(Message("core.device.show.idle"))
         self.reload_skill = True
 
     def _save_identity(self, login: dict):
@@ -360,7 +356,7 @@ class PairingSkill(MycroftSkill):
             error_dialog: Reason for the ending of the pairing process.
         """
         self.speak_dialog(error_dialog)
-        self.bus.emit(Message("mycroft.mic.unmute", None))
+        self.bus.emit(Message("core.mic.unmute", None))
         self._reset_pairing_attributes()
 
     def _restart_pairing(self, quiet: bool = False):
@@ -374,7 +370,7 @@ class PairingSkill(MycroftSkill):
         if not quiet:
             self.speak_dialog("unexpected.error.restarting")
         self._reset_pairing_attributes()
-        self.bus.emit(Message("mycroft.not.paired", data=dict(quiet=quiet)))
+        self.bus.emit(Message("core.not.paired", data=dict(quiet=quiet)))
 
     def _reset_pairing_attributes(self):
         """Reset attributes that need to be in a certain state for pairing."""
@@ -396,13 +392,12 @@ class PairingSkill(MycroftSkill):
                 resting screen.
         """
         if self.platform == MARK_II:
-            page_name_suffix = "_mark_ii"
+            pass
         else:
-            page_name_suffix = "_scalable"
-        page_name = page_name_prefix + page_name_suffix + ".qml"
-        if self.gui.page is not None:
-            self.gui.remove_page(self.gui.page)
-        self.gui.show_page(page_name, override_idle)
+            pass
+        # if self.gui.page is not None:
+        #     self.gui.remove_page(self.gui.page)
+        # self.gui.show_page(page_name, override_idle)
 
     def shutdown(self):
         """Skill process termination steps."""
